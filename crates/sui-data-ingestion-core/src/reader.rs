@@ -429,7 +429,7 @@ pub async fn test() {
     let path: PathBuf = "./src/".into();
 
     let mut total_gas_diffs = Vec::new();
-    let mut total_dep_diffs = Vec::new();
+    //let mut total_dep_diffs = Vec::new();
 
     for num in start_num..=end_num {
         let file_path = path.join(format!("{}.chk", num));
