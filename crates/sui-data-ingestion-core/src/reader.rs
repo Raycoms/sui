@@ -415,34 +415,32 @@ pub async fn test() {
 
         tokio::spawn(async move {
             for num in (start_num..=end_num).step_by(8) {
+                let actual_num = num + idx;
+                let url = format!("https://checkpoints.mainnet.sui.io/{}.chk", actual_num);
+                let file_path = path.join(format!("{}.chk", actual_num));
+                if file_path.exists() {
+                    continue
+                }
                 loop {
-                    let actual_num = num + idx;
-                    let url = format!("https://checkpoints.mainnet.sui.io/{}.chk", actual_num);
-                    let file_path = path.join(format!("{}.chk", actual_num));
-                    if !file_path.exists() {
-                        println!("req {}", actual_num);
-                        let result = client.get(&url).send().await;
-                        match result {
-                            Ok(res) => {
-                                let bytes = res.bytes().await.unwrap();
-                                fs::write(&file_path, &bytes).unwrap();
-                                break;
-                            }
-                            Err(e) => {
-                                println!("Failed to fetch checkpoint file {}: e {:?}", actual_num, e);
-                                tokio::time::sleep(Duration::from_millis(10)).await;
-                            }
+                    println!("req {}", actual_num);
+                    let result = client.get(&url).send().await;
+                    match result {
+                        Ok(res) => {
+                            let bytes = res.bytes().await.unwrap();
+                            fs::write(&file_path, &bytes).unwrap();
+                            break;
                         }
-
-                    } else {
-                        break;
+                        Err(e) => {
+                            println!("Failed to fetch checkpoint file {}: e {:?}", actual_num, e);
+                            tokio::time::sleep(Duration::from_millis(10)).await;
+                        }
                     }
                 }
             }
         });
-    }
+}
 
-    let path: PathBuf = "./src/".into();
+let path: PathBuf = "./src/".into();
 
     let mut total_gas_diffs = Vec::new();
     //let mut total_dep_diffs = Vec::new();
