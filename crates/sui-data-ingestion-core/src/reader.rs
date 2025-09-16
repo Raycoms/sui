@@ -419,6 +419,7 @@ pub async fn test() {
                 let url = format!("https://checkpoints.mainnet.sui.io/{}.chk", actual_num);
                 let file_path = path.join(format!("{}.chk", actual_num));
                 if file_path.exists() {
+                    println!("skipped {}", actual_num);
                     continue
                 }
                 loop {
