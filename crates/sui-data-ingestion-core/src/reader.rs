@@ -26,7 +26,7 @@ use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::oneshot;
 use tokio::time::timeout;
 use tracing::{debug, error, info};
-use reqwest::Client as QwClient;
+use reqwest::{Client as QwClient, Error, Response};
 use sui_types::base_types::{ObjectDigest, ObjectID, SequenceNumber, SuiAddress};
 use sui_types::effects::{TransactionEffects, TransactionEffectsAPI};
 use statrs::statistics::Statistics;
@@ -415,12 +415,25 @@ pub async fn test() {
 
         tokio::spawn(async move {
             for num in (start_num..=end_num).step_by(8) {
-                let actual_num = num + idx;
-                let url = format!("https://checkpoints.mainnet.sui.io/{}.chk", actual_num);
-                let file_path = path.join(format!("{}.chk", actual_num));
-                if !file_path.exists() {
-                    let bytes = client.get(&url).send().await.unwrap().bytes().await.unwrap();
-                    fs::write(&file_path, &bytes).unwrap();
+                loop {
+                    let actual_num = num + idx;
+                    let url = format!("https://checkpoints.mainnet.sui.io/{}.chk", actual_num);
+                    let file_path = path.join(format!("{}.chk", actual_num));
+                    if !file_path.exists() {
+                        let result = client.get(&url).send().await;
+                        match result {
+                            Ok(res) => {
+                                let bytes = res.bytes().await.unwrap();
+                                fs::write(&file_path, &bytes).unwrap();
+                            }
+                            Err(_) => {
+                                tokio::time::sleep(Duration::from_millis(10)).await;
+                            }
+                        }
+
+                    } else {
+                        break;
+                    }
                 }
             }
         });
