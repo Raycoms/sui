@@ -26,6 +26,13 @@ use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::oneshot;
 use tokio::time::timeout;
 use tracing::{debug, error, info};
+use reqwest::Client as QwClient;
+use sui_types::base_types::{ObjectDigest, ObjectID, SequenceNumber, SuiAddress};
+use sui_types::effects::{TransactionEffects, TransactionEffectsAPI};
+use statrs::statistics::Statistics;
+use statrs::statistics::Data;
+use statrs::statistics::OrderStatistics;
+use sui_types::transaction::{CallArg, ObjectArg, TransactionData, TransactionKind};
 
 pub struct CheckpointReader {
     /// Used to read from a local directory when running with a colocated FN.
@@ -391,6 +398,131 @@ impl CheckpointReader {
         }
         Ok(())
     }
+}
+
+#[tokio::test]
+pub async fn test() {
+
+    let start_num = 173_916_000; // example start
+    let end_num = 173_916_000 + 1_000_000; // 185005000;   // example end
+
+    for i in 0..8 {
+        let idx = i.clone();
+        let start_num = start_num.clone();
+        let end_num =  end_num.clone();
+        let client = QwClient::new();
+        let path: PathBuf = "./src/".into();
+
+        tokio::spawn(async move {
+            for num in (start_num..=end_num).step_by(8) {
+                let actual_num = num + idx;
+                let url = format!("https://checkpoints.mainnet.sui.io/{}.chk", actual_num);
+                let file_path = path.join(format!("{}.chk", actual_num));
+                if !file_path.exists() {
+                    let bytes = client.get(&url).send().await.unwrap().bytes().await.unwrap();
+                    fs::write(&file_path, &bytes).unwrap();
+                }
+            }
+        });
+    }
+
+    let path: PathBuf = "./src/".into();
+
+    let mut total_gas_diffs = Vec::new();
+    let mut total_dep_diffs = Vec::new();
+
+    for num in start_num..=end_num {
+        let file_path = path.join(format!("{}.chk", num));
+        loop {
+            if !file_path.exists() {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+            else {
+                break;
+            }
+        }
+
+        let mut reader = CheckpointReader::initialize(
+            path.clone(),
+            num,
+            None,
+            Vec::new(),
+            ReaderOptions::default(),
+        );
+
+        for checkpoint in reader.0.read_local_files().await.unwrap() {
+            for tx in checkpoint.transactions.iter() {
+                if tx.transaction.data().transaction_data().execution_parts().2.owner == SuiAddress::default() {
+                    continue
+                }
+                let max_gas = tx.transaction.data().transaction_data().execution_parts().2.budget; // declared max gas
+                let (gas_used, touched_objs) = match &tx.effects {
+                    TransactionEffects::V1(v1) => {
+                        (v1.gas_cost_summary().net_gas_usage(), v1.object_changes().len() - v1.created().len())
+                    }
+                    TransactionEffects::V2(v2) => {
+                        (v2.gas_cost_summary().net_gas_usage(), v2.object_changes().len() - v2.created().len())
+                    }
+                };
+
+                /*let mut obj_count = 0;
+                match &tx.transaction.data().transaction_data()
+                {
+                    TransactionData::V1(tx) => {
+                        match &tx.kind {
+                            TransactionKind::ProgrammableTransaction(tx) => {
+                                for input in &tx.inputs {
+                                    match input {
+                                        CallArg::Pure(_) => {
+                                            continue
+                                        }
+                                        CallArg::Object(obj) => {
+                                            match obj {
+                                                ObjectArg::ImmOrOwnedObject((id, SequenceNumber, ObjectDigest)) => {
+                                                    obj_count += 1;
+                                                }
+                                                ObjectArg::SharedObject { id: _, initial_shared_version: _, mutable: _ } => {
+                                                    obj_count += 1;
+                                                }
+                                                ObjectArg::Receiving((id, SequenceNumber, ObjectDigest)) => {
+                                                    obj_count += 1;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {
+                                continue
+                            }
+                        }
+                    }
+                }
+
+                if obj_count >= touched_objs {
+                    let count_dif = obj_count - touched_objs;
+                    total_dep_diffs.push(count_dif as f64);
+                } else {
+                    println!("wat {} {}", obj_count, touched_objs);
+                }*/
+
+                //let declared_deps = tx.dependency_hints.len(); // declared hints
+                //let actual_deps = tx.dependencies.len(); // actual used
+                let dif = max_gas as f64 / gas_used as f64;
+                total_gas_diffs.push(dif);
+            }
+        }
+        //fs::remove_file(&file_path).unwrap();
+    }
+
+    //println!("Average {}", total_difs.mean());
+    let mut data_frame = Data::new(total_gas_diffs);
+    println!("Gas diffs: {} {} {} {} {}", data_frame.percentile(10), data_frame.percentile(25), data_frame.percentile(50), data_frame.percentile(75), data_frame.percentile(90));
+
+    //let mut data_frame = Data::new(total_dep_diffs);
+    //println!("Dep diffs: {} {} {} {} {}", data_frame.percentile(10), data_frame.percentile(25), data_frame.percentile(50), data_frame.percentile(75), data_frame.percentile(90));
+
+    assert!(true);
 }
 
 pub struct DataLimiter {

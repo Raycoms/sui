@@ -29,6 +29,8 @@ tap.workspace = true
 sui-protocol-config.workspace = true
 sui-rpc-api.workspace = true
 once_cell.workspace = true
+reqwest = "0.12.9"
+statrs = "0.18.0"
 
 [dev-dependencies]
 rand.workspace = true
