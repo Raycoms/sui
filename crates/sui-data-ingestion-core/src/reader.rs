@@ -429,7 +429,7 @@ pub async fn test() {
                 let url = format!("https://checkpoints.mainnet.sui.io/{}.chk", actual_num);
                 let file_path = path.join(format!("{}.chk", actual_num));
 
-                if tokio::fs::try_exists(&file_path).await.unwrap() {
+                if file_path.exists() {
                     println!("skipped {}", actual_num);
                     continue; // skip existing file
                 }
@@ -461,7 +461,7 @@ pub async fn test() {
     for num in start_num..=end_num {
         let file_path = path.join(format!("{}.chk", num));
         loop {
-            if !tokio::fs::try_exists(&file_path).await.unwrap() {
+            if !file_path.exists() {
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
             else {
