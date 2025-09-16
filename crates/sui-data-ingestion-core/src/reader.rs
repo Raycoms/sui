@@ -403,8 +403,8 @@ impl CheckpointReader {
 #[tokio::test]
 pub async fn test() {
 
-    let start_num = 173_916_000; // example start
-    let end_num = 173_916_000 + 1_000_000; // 185005000;   // example end
+    let start_num = 189_000_000;
+    let end_num = 190_000_000;
 
     for i in 0..8 {
         let idx = i.clone();
