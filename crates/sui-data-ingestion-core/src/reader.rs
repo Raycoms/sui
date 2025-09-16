@@ -416,6 +416,8 @@ pub async fn test() {
         start_num = num;
     }
 
+    println!("Went ahead to: {}", start_num);
+
     for i in 0..8 {
         let idx = i.clone();
         let start_num = start_num.clone();
@@ -477,7 +479,6 @@ pub async fn test() {
             ReaderOptions::default(),
         );
 
-        println!("last {}", num);
         for checkpoint in reader.0.read_local_files().await.unwrap() {
             for tx in checkpoint.transactions.iter() {
                 if tx.transaction.data().transaction_data().execution_parts().2.owner == SuiAddress::default() {
