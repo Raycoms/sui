@@ -426,7 +426,8 @@ pub async fn test() {
                                 let bytes = res.bytes().await.unwrap();
                                 fs::write(&file_path, &bytes).unwrap();
                             }
-                            Err(_) => {
+                            Err(e) => {
+                                println!("Failed to fetch checkpoint file {}: e {:?}", actual_num, e);
                                 tokio::time::sleep(Duration::from_millis(10)).await;
                             }
                         }
