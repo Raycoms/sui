@@ -403,8 +403,18 @@ impl CheckpointReader {
 #[tokio::test]
 pub async fn test() {
 
-    let start_num = 189_000_000;
+    let mut start_num = 189_000_000;
     let end_num = 190_000_000;
+
+
+    for num in start_num..=end_num {
+        let path: PathBuf = "./src/".into();
+        let file_path = path.join(format!("{}.chk", num));
+        if !tokio::fs::try_exists(&file_path).await.unwrap() {
+            break;
+        }
+        start_num = num;
+    }
 
     for i in 0..8 {
         let idx = i.clone();
