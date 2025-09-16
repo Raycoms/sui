@@ -418,10 +418,12 @@ pub async fn test() {
                 let actual_num = num + idx;
                 let url = format!("https://checkpoints.mainnet.sui.io/{}.chk", actual_num);
                 let file_path = path.join(format!("{}.chk", actual_num));
-                if file_path.exists() {
+               
+                if tokio::fs::try_exists(&file_path).await.unwrap() {
                     println!("skipped {}", actual_num);
-                    continue
+                    continue; // skip existing file
                 }
+
                 loop {
                     println!("req {}", actual_num);
                     let result = client.get(&url).send().await;
