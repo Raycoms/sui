@@ -420,6 +420,7 @@ pub async fn test() {
                     let url = format!("https://checkpoints.mainnet.sui.io/{}.chk", actual_num);
                     let file_path = path.join(format!("{}.chk", actual_num));
                     if !file_path.exists() {
+                        println!("req {}", actual_num);
                         let result = client.get(&url).send().await;
                         match result {
                             Ok(res) => {
