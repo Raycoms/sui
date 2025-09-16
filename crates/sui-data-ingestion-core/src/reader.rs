@@ -425,6 +425,7 @@ pub async fn test() {
                             Ok(res) => {
                                 let bytes = res.bytes().await.unwrap();
                                 fs::write(&file_path, &bytes).unwrap();
+                                break;
                             }
                             Err(e) => {
                                 println!("Failed to fetch checkpoint file {}: e {:?}", actual_num, e);
